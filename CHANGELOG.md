@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0] - 2026-07-17
+
+### Added
+
+- Tampilan berwarna (ANSI) dengan fallback otomatis pada terminal tanpa dukungan.
+- Kelas `Konsol` sebagai lapisan tampilan dan pembacaan input.
+
+### Changed
+
+- Menu utama digambar ulang per layar sehingga riwayat terminal tidak menumpuk.
+- Setiap aksi tampil pada layar tersendiri dengan jeda sebelum kembali ke menu.
+
 ## [1.0.0] - 2026-07-17
 
 ### Added

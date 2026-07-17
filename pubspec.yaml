@@ -1,6 +1,6 @@
 name: rental_kendaraan
 description: Aplikasi CLI Sistem Penyewaan Kendaraan untuk UAS Pemrograman Berorientasi Objek.
-version: 1.0.0
+version: 1.1.0
 publish_to: none
 
 environment:
