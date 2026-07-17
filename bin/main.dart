@@ -35,6 +35,6 @@ Future<void> main() async {
       ),
     );
 
-  final Menu menu = Menu(rental, PenyimpananService());
+  final Menu menu = Menu(rental, PenyimpananService(), Konsol());
   await menu.jalankan();
 }

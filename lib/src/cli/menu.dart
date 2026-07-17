@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import '../exception/data_tidak_valid_exception.dart';
 import '../model/kendaraan.dart';
 import '../model/mobil.dart';
@@ -8,28 +6,43 @@ import '../model/penyewaan.dart';
 import '../service/penyimpanan_service.dart';
 import '../service/rental_service.dart';
 import '../util/format_rupiah.dart';
+import 'konsol.dart';
 
 class Menu {
-  Menu(this._rental, this._penyimpanan);
+  Menu(this._rental, this._penyimpanan, this._konsol);
 
   final RentalService _rental;
   final PenyimpananService _penyimpanan;
+  final Konsol _konsol;
+  String _status = '';
 
   Future<void> jalankan() async {
-    print('=== Sistem Penyewaan Kendaraan ===');
     bool berjalan = true;
     while (berjalan) {
-      _tampilkanPilihan();
+      _tampilkanMenuUtama();
       try {
-        berjalan = await _prosesPilihan(_bacaTeks('Pilih menu: '));
+        berjalan = await _prosesPilihan(_konsol.bacaTeks('Pilih menu: '));
       } on DataTidakValidException catch (e) {
-        print('[GAGAL] ${e.pesan}');
+        _status = _konsol.merah('[GAGAL] ${e.pesan}');
       }
     }
-    print('Terima kasih telah menggunakan aplikasi.');
+    print(_konsol.hijau('Terima kasih telah menggunakan aplikasi.'));
   }
 
-  void _tampilkanPilihan() {
+  void _tampilkanMenuUtama() {
+    _konsol.bersihkanLayar();
+    print(_konsol.tebal('=== SISTEM PENYEWAAN KENDARAAN ==='));
+    print(
+      _konsol.redup(
+        '${_rental.semuaKendaraan.length} kendaraan | '
+        '${_rental.penyewaanAktif.length} penyewaan aktif | '
+        'Pendapatan ${formatRupiah(_rental.totalPendapatan)}',
+      ),
+    );
+    if (_status.isNotEmpty) {
+      print(_status);
+      _status = '';
+    }
     print('');
     print('1. Lihat semua kendaraan');
     print('2. Lihat kendaraan tersedia');
@@ -40,14 +53,15 @@ class Menu {
     print('7. Laporan pendapatan');
     print('8. Simpan data');
     print('0. Keluar');
+    print('');
   }
 
   Future<bool> _prosesPilihan(String pilihan) async {
     switch (pilihan) {
       case '1':
-        _tampilkanDaftar(_rental.semuaKendaraan);
+        _layarDaftarKendaraan('Semua Kendaraan', _rental.semuaKendaraan);
       case '2':
-        _tampilkanDaftar(_rental.kendaraanTersedia);
+        _layarDaftarKendaraan('Kendaraan Tersedia', _rental.kendaraanTersedia);
       case '3':
         _tambahKendaraan();
       case '4':
@@ -55,117 +69,127 @@ class Menu {
       case '5':
         _kembalikanKendaraan();
       case '6':
-        _tampilkanPenyewaanAktif();
+        _layarPenyewaanAktif();
       case '7':
-        _tampilkanLaporan();
+        _layarLaporan();
       case '8':
-        await _penyimpanan.simpanData(_rental.jumlahData);
+        await _simpanData();
       case '0':
         return false;
       default:
-        print('Pilihan "$pilihan" tidak dikenal.');
+        _status = _konsol.merah('Pilihan "$pilihan" tidak dikenal.');
     }
     return true;
   }
 
-  void _tampilkanDaftar(List<Kendaraan> daftar) {
+  void _bukaLayar(String judul) {
+    _konsol.bersihkanLayar();
+    print(_konsol.tebal(_konsol.kuning('== $judul ==')));
+    print('');
+  }
+
+  void _layarDaftarKendaraan(String judul, List<Kendaraan> daftar) {
+    _bukaLayar(judul);
     if (daftar.isEmpty) {
       print('Tidak ada kendaraan.');
-      return;
     }
     for (final Kendaraan kendaraan in daftar) {
       kendaraan.tampilkanInfo();
     }
+    print('');
+    _konsol.jeda();
   }
 
   void _tambahKendaraan() {
+    _bukaLayar('Tambah Kendaraan');
     print('Jenis kendaraan: 1) Mobil  2) Motor');
-    final String jenis = _bacaTeks('Pilih jenis: ');
-    final String nama = _bacaTeks('Nama kendaraan: ');
-    final String plat = _bacaTeks('Plat nomor: ');
-    final double harga = _bacaDesimal('Harga sewa per hari: ');
+    final String jenis = _konsol.bacaTeks('Pilih jenis: ');
+    final String nama = _konsol.bacaTeks('Nama kendaraan: ');
+    final String plat = _konsol.bacaTeks('Plat nomor: ');
+    final double harga = _konsol.bacaDesimal('Harga sewa per hari: ');
     final Kendaraan kendaraan = switch (jenis) {
       '1' => Mobil(
         nama: nama,
         platNomor: plat,
         hargaSewaPerHari: harga,
-        jumlahKursi: _bacaAngka('Jumlah kursi: '),
+        jumlahKursi: _konsol.bacaAngka('Jumlah kursi: '),
       ),
       '2' => Motor(
         nama: nama,
         platNomor: plat,
         hargaSewaPerHari: harga,
-        kapasitasMesin: _bacaAngka('Kapasitas mesin (cc): '),
+        kapasitasMesin: _konsol.bacaAngka('Kapasitas mesin (cc): '),
       ),
       _ => throw const DataTidakValidException(
         'Jenis kendaraan harus 1 atau 2.',
       ),
     };
     _rental.tambahKendaraan(kendaraan);
-    print('${kendaraan.jenis} "${kendaraan.nama}" berhasil ditambahkan.');
+    _status = _konsol.hijau(
+      '${kendaraan.jenis} "${kendaraan.nama}" berhasil ditambahkan.',
+    );
   }
 
   void _sewaKendaraan() {
-    _tampilkanDaftar(_rental.kendaraanTersedia);
+    _bukaLayar('Sewa Kendaraan');
+    for (final Kendaraan kendaraan in _rental.kendaraanTersedia) {
+      kendaraan.tampilkanInfo();
+    }
+    print('');
     final Penyewaan penyewaan = _rental.sewaKendaraan(
-      platNomor: _bacaTeks('Plat nomor: '),
-      namaPenyewa: _bacaTeks('Nama penyewa: '),
-      lamaHari: _bacaAngka('Lama sewa (hari): '),
+      platNomor: _konsol.bacaTeks('Plat nomor: '),
+      namaPenyewa: _konsol.bacaTeks('Nama penyewa: '),
+      lamaHari: _konsol.bacaAngka('Lama sewa (hari): '),
     );
-    print('Penyewaan berhasil dicatat:');
-    penyewaan.tampilkanInfo();
+    _status = _konsol.hijau(
+      'Penyewaan dicatat: ${penyewaan.namaPenyewa} - '
+      '${penyewaan.kendaraan.nama}, ${penyewaan.lamaHari} hari, '
+      'total ${formatRupiah(penyewaan.totalBiaya)}.',
+    );
   }
 
   void _kembalikanKendaraan() {
+    _bukaLayar('Kembalikan Kendaraan');
     final Penyewaan penyewaan = _rental.kembalikanKendaraan(
-      _bacaTeks('Plat nomor yang dikembalikan: '),
+      _konsol.bacaTeks('Plat nomor yang dikembalikan: '),
     );
-    print(
+    _status = _konsol.hijau(
       '${penyewaan.kendaraan.nama} dikembalikan. '
-      'Tagihan: ${formatRupiah(penyewaan.totalBiaya)}',
+      'Tagihan: ${formatRupiah(penyewaan.totalBiaya)}.',
     );
   }
 
-  void _tampilkanPenyewaanAktif() {
-    final List<Penyewaan> daftar = _rental.penyewaanAktif;
-    if (daftar.isEmpty) {
+  void _layarPenyewaanAktif() {
+    _bukaLayar('Penyewaan Aktif');
+    if (_rental.penyewaanAktif.isEmpty) {
       print('Tidak ada penyewaan aktif.');
-      return;
     }
-    for (final Penyewaan penyewaan in daftar) {
+    for (final Penyewaan penyewaan in _rental.penyewaanAktif) {
       penyewaan.tampilkanInfo();
     }
+    print('');
+    _konsol.jeda();
   }
 
-  void _tampilkanLaporan() {
+  void _layarLaporan() {
+    _bukaLayar('Laporan');
     final List<String> namaTersedia = _rental.kendaraanTersedia
         .map((Kendaraan k) => k.nama)
         .toList();
     print('Kendaraan tersedia : ${namaTersedia.join(', ')}');
     print('Penyewaan aktif    : ${_rental.penyewaanAktif.length}');
-    print('Total pendapatan   : ${formatRupiah(_rental.totalPendapatan)}');
+    print(
+      'Total pendapatan   : '
+      '${_konsol.hijau(formatRupiah(_rental.totalPendapatan))}',
+    );
+    print('');
+    _konsol.jeda();
   }
 
-  String _bacaTeks(String label) {
-    stdout.write(label);
-    return stdin.readLineSync()?.trim() ?? '';
-  }
-
-  int _bacaAngka(String label) {
-    final String masukan = _bacaTeks(label);
-    final int? nilai = int.tryParse(masukan);
-    if (nilai == null) {
-      throw DataTidakValidException('"$masukan" bukan bilangan bulat.');
-    }
-    return nilai;
-  }
-
-  double _bacaDesimal(String label) {
-    final String masukan = _bacaTeks(label);
-    final double? nilai = double.tryParse(masukan);
-    if (nilai == null) {
-      throw DataTidakValidException('"$masukan" bukan angka.');
-    }
-    return nilai;
+  Future<void> _simpanData() async {
+    _bukaLayar('Simpan Data');
+    await _penyimpanan.simpanData(_rental.jumlahData);
+    print('');
+    _konsol.jeda();
   }
 }

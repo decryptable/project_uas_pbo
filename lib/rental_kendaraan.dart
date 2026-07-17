@@ -1,3 +1,4 @@
+export 'src/cli/konsol.dart';
 export 'src/cli/menu.dart';
 export 'src/exception/data_tidak_valid_exception.dart';
 export 'src/model/kendaraan.dart';
