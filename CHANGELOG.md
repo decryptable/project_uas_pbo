@@ -13,3 +13,4 @@
 - Menu interaktif CLI dengan delapan fitur utama.
 - Pengujian unit untuk model dan service.
 - Workflow CI GitHub Actions (format, analyze, test) dan release otomatis dari tag.
+- Executable hasil `dart compile exe` untuk Linux, Windows, dan macOS pada setiap release.
